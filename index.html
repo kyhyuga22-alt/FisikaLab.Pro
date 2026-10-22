@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FisikaLab.pro2 - Real-Time Multiplayer Physics Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                            dark: '#090d16',
+                            card: '#111827',
+                            border: '#1f2937'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .neon-glow {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+        }
+        .neon-glow-blue {
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-cyber-dark text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+
+    <!-- Header / Navigation -->
+    <header class="border-b border-cyber-border bg-cyber-card/60 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('home')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center neon-glow">
+                    <i class="fa-solid fa-atom text-white text-xl animate-spin" style="animation-duration: 12s;"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">FisikaLab</span>
+                    <span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ml-1">PRO v2.4 LIVE</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <button onclick="openCustomQuizModal()" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-cyan-400"></i>
+                    <span>AI Quiz Generator</span>
+                </button>
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center border border-slate-700 transition text-slate-300">
+                    <i class="fa-solid fa-moon" id="themeIcon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
+
+        <!-- VIEW 1: HOME DASHBOARD (Solo + Multiplayer Host/Participant) -->
+        <div id="viewHome" class="space-y-8 my-auto">
+            <div class="text-center max-w-3xl mx-auto space-y-4">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Next-Gen Physics Learning & Battle Arena</span>
+                </div>
+                <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
+                    Master Physics <span class="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Together.</span>
+                </h1>
+                <p class="text-slate-400 text-base sm:text-lg">
+                    Pilih mode bermain solo untuk eksplorasi mandiri atau masuk ke Arena Real-Time Multiplayer untuk bertarung kuis seru bersama teman sekelas atau peserta lain secara langsung!
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <!-- Solo Mode Card -->
+                <div class="glass-panel rounded-2xl p-6 hover:border-emerald-500/50 transition duration-300 flex flex-col justify-between group">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl mb-4 group-hover:scale-110 transition">
+                            <i class="fa-solid fa-user-astronaut"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Solo Practice</h3>
+                        <p class="text-slate-400 text-sm mb-6">Asah kemampuan fisika secara mandiri dengan berbagai tingkat kesulitan dan topik mekanika, termodinamika, hingga fisika modern.</p>
+                    </div>
+                    <button onclick="startSoloMode()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+                        <span>Mulai Solo</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Host Multiplayer Card -->
+                <div class="glass-panel rounded-2xl p-6 hover:border-cyan-500/50 transition duration-300 flex flex-col justify-between group">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl mb-4 group-hover:scale-110 transition">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Host Room</h3>
+                        <p class="text-slate-400 text-sm mb-6">Buat ruang kuis live sendiri sebagai Guru/Host. Kontrol jalannya soal, awasi peserta, dan tampilkan leaderboard real-time.</p>
+                    </div>
+                    <button onclick="setupHostRoom()" class="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold shadow-lg shadow-cyan-600/30 transition flex items-center justify-center space-x-2">
+                        <span>Buat Room Kuis</span>
+                        <i class="fa-solid fa-tower-broadcast"></i>
+                    </button>
+                </div>
+
+                <!-- Join Multiplayer Card -->
+                <div class="glass-panel rounded-2xl p-6 hover:border-purple-500/50 transition duration-300 flex flex-col justify-between group">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xl mb-4 group-hover:scale-110 transition">
+                            <i class="fa-solid fa-users-viewfinder"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Gabung Peserta</h3>
+                        <p class="text-slate-400 text-sm mb-6">Punya kode room dari Host? Masukkan kode room beserta nama panggilanmu untuk ikut bertanding di papan skor live.</p>
+                    </div>
+                    <button onclick="openJoinModal()" class="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-lg shadow-purple-600/30 transition flex items-center justify-center space-x-2">
+                        <span>Gabung Room</span>
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="max-w-3xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-800/80 text-center">
+                <div>
+                    <div class="text-2xl font-black text-emerald-400">12+</div>
+                    <div class="text-xs text-slate-400 mt-1">Topik Fisika</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-cyan-400">Real-Time</div>
+                    <div class="text-xs text-slate-400 mt-1">Multiplayer Sync</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-purple-400">AI Powered</div>
+                    <div class="text-xs text-slate-400 mt-1">Custom Generator</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-amber-400">Podium</div>
+                    <div class="text-xs text-slate-400 mt-1">Live Leaderboard</div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- VIEW 2: SOLO QUIZ INTERFACE -->
+        <div id="viewSolo" class="hidden flex-1 flex flex-col max-w-3xl mx-auto w-full space-y-6 my-auto">
+            <div class="flex items-center justify-between glass-panel px-6 py-4 rounded-2xl">
+                <div>
+                    <span id="soloCategoryBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Mekanika Klasik</span>
+                    <h2 id="soloQuizTitle" class="text-lg font-bold text-white mt-1">Latihan Mandiri Fisika</h2>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-400">Pertanyaan</div>
+                    <div class="text-lg font-extrabold text-cyan-400"><span id="soloCurrQ">1</span>/<span id="soloTotalQ">5</span></div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div id="soloProgressBar" class="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full transition-all duration-300" style="width: 20%;"></div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
+                <div class="flex items-start justify-between">
+                    <p id="soloQuestionText" class="text-lg sm:text-xl font-semibold text-white leading-relaxed">Loading question...</p>
+                    <div id="soloTimer" class="px-3 py-1.5 rounded-xl bg-slate-800 text-emerald-400 font-mono font-bold text-sm border border-slate-700 flex items-center space-x-1.5 shrink-0 ml-4">
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="soloTimerVal">25</span>s
+                    </div>
+                </div>
+
+                <!-- Options Grid -->
+                <div id="soloOptionsContainer" class="grid grid-cols-1 gap-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <button onclick="switchView('home')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 transition">
+                    <i class="fa-solid fa-arrow-left mr-2"></i> Keluar ke Menu
+                </button>
+                <button id="soloNextBtn" onclick="nextSoloQuestion()" class="hidden px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-lg shadow-emerald-600/30">
+                    Lanjut Soal <i class="fa-solid fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+
+        <!-- VIEW 3: HOST ROOM MANAGEMENT DASHBOARD -->
+        <div id="viewHostDashboard" class="hidden flex-1 flex flex-col max-w-4xl mx-auto w-full space-y-6 my-auto">
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-tower-broadcast"></i> Host Control Panel
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Ruang Kuis Live</h2>
+                    </div>
+                    <div class="flex items-center space-x-3 bg-slate-900/80 px-4 py-3 rounded-2xl border border-slate-800">
+                        <div>
+                            <div class="text-xs text-slate-400">ROOM CODE</div>
+                            <div id="hostRoomCodeDisplay" class="text-2xl font-black font-mono tracking-widest text-cyan-400">----</div>
+                        </div>
+                        <button onclick="copyRoomCode()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 transition" title="Salin Kode">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-800">
+                    <div class="md:col-span-1 space-y-4">
+                        <h3 class="font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-users text-emerald-400"></i>
+                            <span>Peserta Bergabung (<span id="hostPlayerCount">0</span>)</span>
+                        </h3>
+                        <div id="hostPlayersList" class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 h-64 overflow-y-auto space-y-2 text-sm">
+                            <div class="text-slate-500 italic text-center py-12">Menunggu peserta bergabung...</div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 flex flex-col justify-between bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+                        <div class="space-y-3">
+                            <h3 class="font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-sliders text-cyan-400"></i>
+                                <span>Kontrol Game Master</span>
+                            </h3>
+                            <p class="text-sm text-slate-400">Sebagai Host, kamu memegang kendali penuh kapan kuis dimulai dan kapan maju ke soal berikutnya. Pastikan semua peserta sudah masuk sebelum memulai.</p>
+                            
+                            <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 space-y-2">
+                                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Topik Kuis Aktif</div>
+                                <div id="hostQuizTopicName" class="text-base font-bold text-white">Mekanika Dasar & Dinamika Gerak</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <button onclick="switchView('home')" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-slate-300 transition">
+                                <i class="fa-solid fa-arrow-left mr-2"></i> Tutup Room
+                            </button>
+                            <button id="hostStartGameBtn" onclick="hostStartGame()" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold shadow-lg shadow-cyan-600/30 transition flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-play"></i>
+                                <span>Mulai Pertempuran Kuis!</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- VIEW 4: LIVE MULTIPLAYER GAMEPLAY (Host Live Screen / Participant Player Screen) -->
+        <div id="viewLiveGame" class="hidden flex-1 flex flex-col max-w-4xl mx-auto w-full space-y-6 my-auto">
+            <div class="glass-panel px-6 py-4 rounded-2xl flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span class="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold border border-cyan-500/30">MULTIPLAYER ARENA</span>
+                    <span id="liveRoleBadge" class="text-sm font-bold text-white">Role: Participant</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">Skor Kamu</div>
+                        <div id="liveUserScore" class="text-lg font-black text-emerald-400">0 pts</div>
+                    </div>
+                    <div class="h-8 w-px bg-slate-800"></div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">Soal Ke</div>
+                        <div class="text-lg font-black text-cyan-400"><span id="liveCurrQ">1</span>/<span id="liveTotalQ">5</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Question & Action Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Question Card (2 Cols) -->
+                <div class="lg:col-span-2 glass-panel p-6 sm:p-8 rounded-3xl space-y-6 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span id="liveCategoryTag" class="text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">Fisika</span>
+                            <div id="liveTimerBox" class="px-3 py-1 rounded-xl bg-slate-800 text-amber-400 font-mono font-bold text-sm border border-slate-700 flex items-center space-x-1.5">
+                                <i class="fa-regular fa-clock"></i>
+                                <span id="liveTimerVal">20</span>s
+                            </div>
+                        </div>
+                        <h2 id="liveQuestionText" class="text-xl sm:text-2xl font-bold text-white leading-relaxed">Mempersiapkan pertanyaan live...</h2>
+                    </div>
+
+                    <div id="liveOptionsContainer" class="grid grid-cols-1 gap-3">
+                        <!-- Options generated dynamically -->
+                    </div>
+
+                    <div id="hostNextContainer" class="hidden pt-4 border-t border-slate-800 flex justify-end">
+                        <button onclick="hostNextLiveQuestion()" class="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition flex items-center space-x-2 shadow-lg shadow-cyan-600/30">
+                            <span>Lanjut Soal Berikutnya (Host)</span>
+                            <i class="fa-solid fa-forward"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Leaderboard Sidebar (1 Col) -->
+                <div class="glass-panel p-6 rounded-3xl space-y-4 flex flex-col">
+                    <h3 class="font-bold text-white flex items-center justify-between">
+                        <span class="flex items-center space-x-2">
+                            <i class="fa-solid fa-trophy text-amber-400"></i>
+                            <span>Live Leaderboard</span>
+                        </span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    </h3>
+                    <div id="liveLeaderboardList" class="flex-1 space-y-2 overflow-y-auto max-h-80 pr-1 text-sm">
+                        <div class="text-slate-500 italic text-center py-12">Memuat skor...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- VIEW 5: PODIUM / GAME OVER RESULTS -->
+        <div id="viewPodium" class="hidden flex-1 flex flex-col max-w-2xl mx-auto w-full space-y-6 my-auto text-center">
+            <div class="glass-panel p-8 sm:p-10 rounded-3xl space-y-8 relative overflow-hidden">
+                <div class="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl"></div>
+                <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl"></div>
+
+                <div class="space-y-2 relative z-10">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                        <i class="fa-solid fa-award"></i> Pertempuran Kuis Selesai
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white">Hasil Podium Akhir</h2>
+                    <p class="text-slate-400 text-sm">Hebat! Berikut adalah para juara fisika di arena pertempuran kali ini.</p>
+                </div>
+
+                <!-- Podium Top 3 Display -->
+                <div id="podiumTopList" class="grid grid-cols-3 gap-3 items-end pt-4 relative z-10">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Full Rank List -->
+                <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 max-h-48 overflow-y-auto space-y-2 text-left relative z-10" id="podiumFullList">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <div class="flex justify-center space-x-4 pt-2 relative z-10">
+                    <button onclick="switchView('home')" class="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-slate-300 transition">
+                        <i class="fa-solid fa-house mr-2"></i> Kembali ke Menu Utama
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL: JOIN ROOM (Participant) -->
+    <div id="joinModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 sm:p-8 rounded-3xl space-y-6 border border-slate-700 relative">
+            <button onclick="closeJoinModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xl">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-white">Gabung Room Kuis</h3>
+                <p class="text-slate-400 text-sm">Masukkan kode room yang diberikan oleh Host dan pilih nama panggilanmu.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Kode Room (4 Karakter)</label>
+                    <input type="text" id="joinRoomCodeInput" placeholder="Contoh: 4892" maxlength="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-mono uppercase tracking-widest text-lg focus:outline-none focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Nama Panggilan / Nickname</label>
+                    <input type="text" id="joinNicknameInput" placeholder="Contoh: Albert Einstein" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500">
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closeJoinModal()" class="w-1/2 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-slate-300 transition">Batal</button>
+                <button onclick="submitJoinRoom()" class="w-1/2 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-semibold text-white shadow-lg shadow-purple-600/30 transition">Gabung</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: AI CUSTOM QUIZ GENERATOR -->
+    <div id="customQuizModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full p-6 sm:p-8 rounded-3xl space-y-6 border border-slate-700 relative">
+            <button onclick="closeCustomQuizModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-white">AI Physics Quiz Generator</h3>
+                <p class="text-slate-400 text-sm">Gunakan kecerdasan buatan Gemini untuk merancang soal kuis fisika kustom sesuai topik pilihanmu.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Topik / Submateri Fisika</label>
+                    <input type="text" id="aiTopicInput" placeholder="Contoh: Relativitas Khusus Einstein atau Hukum Termodinamika" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Tingkat Kesulitan</label>
+                        <select id="aiLevelSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500">
+                            <option value="SMA">SMA Sederajat</option>
+                            <option value="Universitas Dasar">Universitas (Dasar)</option>
+                            <option value="Olimpiade">Olimpiade Fisika</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Jumlah Soal</label>
+                        <select id="aiCountSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500">
+                            <option value="3">3 Soal</option>
+                            <option value="5" selected>5 Soal</option>
+                            <option value="10">10 Soal</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closeCustomQuizModal()" class="w-1/2 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-slate-300 transition">Batal</button>
+                <button onclick="generateCustomAIQuiz()" id="aiGenerateBtn" class="w-1/2 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-semibold text-white shadow-lg shadow-cyan-600/30 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-sparkles"></i>
+                    <span>Generate Soal</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular ESM) + App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase Configuration & State variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fisikalab-pro2-live-arena';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+
+        let app, db, auth, currentUser = null;
+        let unsubscribeRoom = null;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                signInWithCustomToken(auth, __initial_auth_token).then((userCred) => {
+                    currentUser = userCred.user;
+                }).catch(() => signInAnonymously(auth).then(uc => currentUser = uc.user));
+            } else {
+                signInAnonymously(auth).then(uc => currentUser = uc.user);
+            }
+        } catch (e) {
+            console.log("Firebase initialized in offline/fallback mode:", e);
+        }
+
+        // Standard Physics Question Bank
+        const sampleQuestions = [
+            {
+                topic: "Mekanika Klasik",
+                question: "Sebuah benda bermassa 2 kg bergerak dengan kecepatan awal 5 m/s pada bidang datar licin. Jika diberi gaya tetap 10 N searah geraknya selama 3 s, berapakah kecepatan akhir benda tersebut?",
+                options: ["15 m/s", "20 m/s", "25 m/s", "30 m/s"],
+                correct: 1,
+                explanation: "Gunakan hukum Newton II: a = F/m = 10/2 = 5 m/s². Kecepatan akhir vt = v0 + a*t = 5 + (5*3) = 20 m/s."
+            },
+            {
+                topic: "Termodinamika",
+                question: "Pada proses isotermal suatu gas ideal, besaran apakah yang bernilai tetap (konstan) sepanjang proses berlangsung?",
+                options: ["Tekanan (P)", "Volume (V)", "Suhu (T)", "Usaha (W)"],
+                correct: 2,
+                explanation: "Proses isotermal adalah proses termodinamika pada suhu konstan (ΔT = 0)."
+            },
+            {
+                topic: "Gelombang & Optik",
+                question: "Cahaya monokromatik dengan panjang gelombang 500 nm melewati celah ganda Young menghasilkan pola interferensi. Jika jarak celah ke layar 1 m dan jarak terang ke-1 dari pusat 0,5 mm, berapakah jarak antar celah (d)?",
+                options: ["0,5 mm", "1,0 mm", "1,5 mm", "2,0 mm"],
+                correct: 1,
+                explanation: "Rumus interferensi terang: d * (y/L) = n * λ -> d * (0.5e-3 / 1) = 1 * (500e-9) -> d = 1.0 mm."
+            },
+            {
+                topic: "Listrik Magnet",
+                question: "Dua muatan titik besarnya +4 µC dan -9 µC terpisah sejauh 30 cm di udara. Berapakah besar gaya tarik-menarik antara kedua muatan tersebut?",
+                options: ["1,8 N", "3,6 N", "5,4 N", "7,2 N"],
+                correct: 1,
+                explanation: "F = k * |q1*q2| / r² = (9×10⁹ * 4×10⁻⁶ * 9×10⁻⁶) / (0.3)² = 3,6 N."
+            },
+            {
+                topic: "Fisika Modern",
+                question: "Menurut teori relativitas khusus Einstein, apa yang terjadi pada massa relativistik (m) suatu benda jika kecepatannya mendekati kecepatan cahaya (c)?",
+                options: ["Massa menjadi nol", "Massa bernilai tetap", "Massa mendekati tak hingga", "Massa menyusut"],
+                correct: 2,
+                explanation: "Massa relativistic m = m0 / sqrt(1 - v²/c²). Saat v mendekati c, penyebut mendekati 0, sehingga massa mendekati tak hingga."
+            }
+        ];
+
+        // App States
+        let gameState = {
+            mode: 'solo', // 'solo', 'host', 'participant'
+            roomCode: '',
+            nickname: '',
+            questions: sampleQuestions,
+            currentIndex: 0,
+            score: 0,
+            timer: 25,
+            timerInterval: null,
+            isAnswered: false,
+            players: []
+        };
+
+        // UI Switcher
+        window.switchView = function(viewName) {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            if (unsubscribeRoom) { unsubscribeRoom(); unsubscribeRoom = null; }
+
+            document.getElementById('viewHome').classList.add('hidden');
+            document.getElementById('viewSolo').classList.add('hidden');
+            document.getElementById('viewHostDashboard').classList.add('hidden');
+            document.getElementById('viewLiveGame').classList.add('hidden');
+            document.getElementById('viewPodium').classList.add('hidden');
+
+            if (viewName === 'home') document.getElementById('viewHome').classList.remove('hidden');
+            if (viewName === 'solo') document.getElementById('viewSolo').classList.remove('hidden');
+            if (viewName === 'hostDashboard') document.getElementById('viewHostDashboard').classList.remove('hidden');
+            if (viewName === 'liveGame') document.getElementById('viewLiveGame').classList.remove('hidden');
+            if (viewName === 'podium') document.getElementById('viewPodium').classList.remove('hidden');
+        };
+
+        // --- SOLO MODE LOGIC ---
+        window.startSoloMode = function() {
+            gameState.mode = 'solo';
+            gameState.questions = sampleQuestions;
+            gameState.currentIndex = 0;
+            gameState.score = 0;
+            switchView('solo');
+            renderSoloQuestion();
+        };
+
+        function renderSoloQuestion() {
+            const q = gameState.questions[gameState.currentIndex];
+            document.getElementById('soloCategoryBadge').innerText = q.topic;
+            document.getElementById('soloCurrQ').innerText = gameState.currentIndex + 1;
+            document.getElementById('soloTotalQ').innerText = gameState.questions.length;
+            document.getElementById('soloProgressBar').style.width = `${((gameState.currentIndex + 1) / gameState.questions.length) * 100}%`;
+            document.getElementById('soloQuestionText').innerText = q.question;
+            document.getElementById('soloNextBtn').classList.add('hidden');
+            gameState.isAnswered = false;
+
+            const container = document.getElementById('soloOptionsContainer');
+            container.innerHTML = '';
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 font-medium text-white transition flex items-center justify-between group";
+                btn.innerHTML = `<span><strong class="text-emerald-400 mr-2">${String.fromCharCode(65 + idx)}.</strong> ${opt}</span> <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-emerald-400 transition"></i>`;
+                btn.onclick = () => selectSoloOption(idx);
+                container.appendChild(btn);
+            });
+
+            startTimer(25, 'soloTimerVal', () => selectSoloOption(-1));
+        }
+
+        window.selectSoloOption = function(idx) {
+            if (gameState.isAnswered) return;
+            gameState.isAnswered = true;
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+
+            const q = gameState.questions[gameState.currentIndex];
+            const buttons = document.getElementById('soloOptionsContainer').children;
+
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+                if (i === q.correct) {
+                    buttons[i].classList.remove('bg-slate-900/80', 'border-slate-700');
+                    buttons[i].classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-300');
+                } else if (i === idx && idx !== q.correct) {
+                    buttons[i].classList.remove('bg-slate-900/80', 'border-slate-700');
+                    buttons[i].classList.add('bg-rose-600/30', 'border-rose-500', 'text-rose-300');
+                }
+            }
+
+            if (idx === q.correct) {
+                gameState.score += 100;
+            }
+
+            document.getElementById('soloNextBtn').classList.remove('hidden');
+        };
+
+        window.nextSoloQuestion = function() {
+            gameState.currentIndex++;
+            if (gameState.currentIndex < gameState.questions.length) {
+                renderSoloQuestion();
+            } else {
+                showPodium([{ nickname: 'Kamu (Solo)', score: gameState.score }]);
+            }
+        };
+
+        // --- MULTIPLAYER ROOM LOGIC ---
+        window.setupHostRoom = function() {
+            const code = Math.floor(1000 + Math.random() * 9000).toString();
+            gameState.roomCode = code;
+            gameState.mode = 'host';
+            gameState.nickname = 'HOST';
+            gameState.currentIndex = 0;
+            gameState.score = 0;
+            gameState.players = [];
+
+            document.getElementById('hostRoomCodeDisplay').innerText = code;
+            document.getElementById('hostQuizTopicName').innerText = "Fisika Interaktif Standar (5 Soal)";
+            switchView('hostDashboard');
+
+            // Save room state to Firebase Firestore
+            if (db) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
+                setDoc(roomRef, {
+                    code: code,
+                    status: 'waiting', // waiting, active, finished
+                    currentIndex: 0,
+                    players: [],
+                    updatedAt: new Date().toISOString()
+                }).then(() => {
+                    listenToRoom(code);
+                }).catch(err => console.log("Firestore setDoc error:", err));
+            }
+        };
+
+        window.copyRoomCode = function() {
+            navigator.clipboard.writeText(gameState.roomCode);
+            alertCustom("Kode room berhasil disalin ke clipboard!");
+        };
+
+        window.openJoinModal = function() {
+            document.getElementById('joinModal').classList.remove('hidden');
+        };
+
+        window.closeJoinModal = function() {
+            document.getElementById('joinModal').classList.add('hidden');
+        };
+
+        window.submitJoinRoom = function() {
+            const code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
+            const nickname = document.getElementById('joinNicknameInput').value.trim();
+
+            if (!code || code.length !== 4) {
+                alertCustom("Masukkan 4 digit kode room yang valid.");
+                return;
+            }
+            if (!nickname) {
+                alertCustom("Masukkan nama panggilan / nickname kamu.");
+                return;
+            }
+
+            gameState.roomCode = code;
+            gameState.nickname = nickname;
+            gameState.mode = 'participant';
+            gameState.score = 0;
+            gameState.currentIndex = 0;
+
+            closeJoinModal();
+
+            if (db) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
+                getDoc(roomRef).then(docSnap => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        let players = data.players || [];
+                        if (!players.some(p => p.nickname === nickname)) {
+                            players.push({ nickname: nickname, score: 0, answered: false });
+                            updateDoc(roomRef, { players: players });
+                        }
+                        listenToRoom(code);
+                        if (data.status === 'active') {
+                            startLiveGameSession();
+                        } else {
+                            switchView('liveGame');
+                            document.getElementById('liveRoleBadge').innerText = "Menunggu Host Memulai...";
+                            document.getElementById('liveQuestionText').innerText = "Kamu sudah masuk room! Harap tunggu Host menekan tombol Mulai Pertempuran.";
+                        }
+                    } else {
+                        alertCustom("Room dengan kode tersebut tidak ditemukan.");
+                    }
+                }).catch(err => {
+                    console.log("Join error:", err);
+                    alertCustom("Gagal bergabung ke room.");
+                });
+            } else {
+                alertCustom("Mode offline: simulasi room lokal.");
+                switchView('liveGame');
+                startLiveGameSession();
+            }
+        };
+
+        function listenToRoom(code) {
+            if (!db) return;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
+            unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                gameState.players = data.players || [];
+                gameState.currentIndex = data.currentIndex || 0;
+
+                if (gameState.mode === 'host') {
+                    renderHostPlayersList();
+                } else if (gameState.mode === 'participant') {
+                    if (data.status === 'active') {
+                        startLiveGameSession();
+                    } else if (data.status === 'finished') {
+                        showPodium(gameState.players);
+                    }
+                }
+            }, (error) => {
+                console.log("Snapshot error:", error);
+            });
+        }
+
+        function renderHostPlayersList() {
+            const listEl = document.getElementById('hostPlayersList');
+            document.getElementById('hostPlayerCount').innerText = gameState.players.length;
+            if (gameState.players.length === 0) {
+                listEl.innerHTML = `<div class="text-slate-500 italic text-center py-12">Menunggu peserta bergabung...</div>`;
+                return;
+            }
+            listEl.innerHTML = '';
+            gameState.players.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700";
+                div.innerHTML = `<span class="font-semibold text-white"><i class="fa-solid fa-user text-emerald-400 mr-2"></i>${p.nickname}</span> <span class="text-xs font-mono text-cyan-400">${p.score} pts</span>`;
+                listEl.appendChild(div);
+            });
+        }
+
+        window.hostStartGame = function() {
+            if (db) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${gameState.roomCode}`);
+                updateDoc(roomRef, { status: 'active', currentIndex: 0 });
+            }
+            startLiveGameSession();
+        };
+
+        function startLiveGameSession() {
+            switchView('liveGame');
+            document.getElementById('liveRoleBadge').innerText = gameState.mode === 'host' ? 'Role: Host (Master)' : `Role: ${gameState.nickname}`;
+            renderLiveQuestion();
+        }
+
+        function renderLiveQuestion() {
+            const q = sampleQuestions[gameState.currentIndex];
+            if (!q) {
+                // Selesai
+                if (gameState.mode === 'host') {
+                    if (db) {
+                        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${gameState.roomCode}`);
+                        updateDoc(roomRef, { status: 'finished' });
+                    }
+                }
+                showPodium(gameState.players);
+                return;
+            }
+
+            document.getElementById('liveCurrQ').innerText = gameState.currentIndex + 1;
+            document.getElementById('liveTotalQ').innerText = sampleQuestions.length;
+            document.getElementById('liveCategoryTag').innerText = q.topic;
+            document.getElementById('liveQuestionText').innerText = q.question;
+            document.getElementById('liveUserScore').innerText = `${gameState.score} pts`;
+
+            const optContainer = document.getElementById('liveOptionsContainer');
+            optContainer.innerHTML = '';
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 font-medium text-white transition flex items-center justify-between group";
+                btn.innerHTML = `<span><strong class="text-cyan-400 mr-2">${String.fromCharCode(65 + idx)}.</strong> ${opt}</span> <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-cyan-400 transition"></i>`;
+                btn.onclick = () => selectLiveOption(idx);
+                optContainer.appendChild(btn);
+            });
+
+            if (gameState.mode === 'host') {
+                document.getElementById('hostNextContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('hostNextContainer').classList.add('hidden');
+            }
+
+            renderLiveLeaderboard();
+            startTimer(20, 'liveTimerVal', () => {});
+        }
+
+        window.selectLiveOption = function(idx) {
+            const q = sampleQuestions[gameState.currentIndex];
+            const buttons = document.getElementById('liveOptionsContainer').children;
+
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+                if (i === q.correct) {
+                    buttons[i].classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-300');
+                } else if (i === idx && idx !== q.correct) {
+                    buttons[i].classList.add('bg-rose-600/30', 'border-rose-500', 'text-rose-300');
+                }
+            }
+
+            if (idx === q.correct) {
+                gameState.score += 100;
+                document.getElementById('liveUserScore').innerText = `${gameState.score} pts`;
+            }
+
+            // Update player score in Firestore room if participant
+            if (db && gameState.mode === 'participant') {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${gameState.roomCode}`);
+                getDoc(roomRef).then(docSnap => {
+                    if (docSnap.exists()) {
+                        let players = docSnap.data().players || [];
+                        players = players.map(p => {
+                            if (p.nickname === gameState.nickname) {
+                                return { ...p, score: gameState.score };
+                            }
+                            return p;
+                        });
+                        updateDoc(roomRef, { players: players });
+                    }
+                });
+            }
+        };
+
+        window.hostNextLiveQuestion = function() {
+            gameState.currentIndex++;
+            if (db) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${gameState.roomCode}`);
+                updateDoc(roomRef, { currentIndex: gameState.currentIndex });
+            }
+            renderLiveQuestion();
+        };
+
+        function renderLiveLeaderboard() {
+            const listEl = document.getElementById('liveLeaderboardList');
+            let sortedPlayers = [...gameState.players];
+            if (!sortedPlayers.some(p => p.nickname === gameState.nickname) && gameState.nickname) {
+                sortedPlayers.push({ nickname: gameState.nickname + ' (Kamu)', score: gameState.score });
+            }
+            sortedPlayers.sort((a, b) => b.score - a.score);
+
+            if (sortedPlayers.length === 0) {
+                listEl.innerHTML = `<div class="text-slate-500 italic text-center py-12">Belum ada peserta...</div>`;
+                return;
+            }
+
+            listEl.innerHTML = '';
+            sortedPlayers.forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800 text-xs";
+                div.innerHTML = `<span class="font-semibold text-white flex items-center"><span class="w-5 text-slate-400">#${idx+1}</span> ${p.nickname}</span> <span class="font-mono text-cyan-400 font-bold">${p.score} pts</span>`;
+                listEl.appendChild(div);
+            });
+        }
+
+        function showPodium(playersList) {
+            switchView('podium');
+            let sorted = [...playersList].sort((a, b) => b.score - a.score);
+            
+            const topListEl = document.getElementById('podiumTopList');
+            topListEl.innerHTML = '';
+
+            // Rank 2
+            if (sorted[1]) {
+                topListEl.innerHTML += `
+                    <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex flex-col items-center space-y-2">
+                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300">2</div>
+                        <div class="font-bold text-sm text-white truncate max-w-[100px]">${sorted[1].nickname}</div>
+                        <div class="text-xs font-mono text-slate-400">${sorted[1].score} pts</div>
+                    </div>`;
+            } else {
+                topListEl.innerHTML += `<div></div>`;
+            }
+
+            // Rank 1
+            if (sorted[0]) {
+                topListEl.innerHTML += `
+                    <div class="bg-amber-500/10 border border-amber-500/40 p-5 rounded-2xl flex flex-col items-center space-y-2 transform -translate-y-3 neon-glow">
+                        <i class="fa-solid fa-crown text-amber-400 text-xl animate-bounce"></i>
+                        <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center font-bold text-amber-300">1</div>
+                        <div class="font-bold text-sm text-white truncate max-w-[100px]">${sorted[0].nickname}</div>
+                        <div class="text-xs font-mono text-amber-400 font-extrabold">${sorted[0].score} pts</div>
+                    </div>`;
+            }
+
+            // Rank 3
+            if (sorted[2]) {
+                topListEl.innerHTML += `
+                    <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex flex-col items-center space-y-2">
+                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-amber-600">3</div>
+                        <div class="font-bold text-sm text-white truncate max-w-[100px]">${sorted[2].nickname}</div>
+                        <div class="text-xs font-mono text-slate-400">${sorted[2].score} pts</div>
+                    </div>`;
+            } else {
+                topListEl.innerHTML += `<div></div>`;
+            }
+
+            // Full list
+            const fullListEl = document.getElementById('podiumFullList');
+            fullListEl.innerHTML = '';
+            sorted.forEach((p, idx) => {
+                fullListEl.innerHTML += `<div class="flex justify-between items-center text-xs px-3 py-2 bg-slate-900 rounded-xl border border-slate-800"><span class="font-medium text-slate-300">#${idx+1} ${p.nickname}</span> <span class="font-mono text-emerald-400 font-bold">${p.score} pts</span></div>`;
+            });
+        }
+
+        // --- TIMER UTILITY ---
+        function startTimer(seconds, elementId, onExpire) {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            let timeLeft = seconds;
+            const el = document.getElementById(elementId);
+            if (el) el.innerText = timeLeft;
+
+            gameState.timerInterval = setInterval(() => {
+                timeLeft--;
+                if (el) el.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    onExpire();
+                }
+            }, 1000);
+        }
+
+        // --- AI CUSTOM QUIZ MODAL ---
+        window.openCustomQuizModal = function() {
+            document.getElementById('customQuizModal').classList.remove('hidden');
+        };
+        window.closeCustomQuizModal = function() {
+            document.getElementById('customQuizModal').classList.add('hidden');
+        };
+
+        window.generateCustomAIQuiz = async function() {
+            const topic = document.getElementById('aiTopicInput').value.trim();
+            const level = document.getElementById('aiLevelSelect').value;
+            const count = parseInt(document.getElementById('aiCountSelect').value);
+
+            if (!topic) {
+                alertCustom("Masukkan topik fisika terlebih dahulu.");
+                return;
+            }
+
+            const btn = document.getElementById('aiGenerateBtn');
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Generating...</span>`;
+            btn.disabled = true;
+
+            const prompt = `Buatkan ${count} soal pilihan ganda fisika dengan topik "${topic}" tingkat ${level}. Berikan format output JSON berupa array object dengan properti: topic (string), question (string), options (array of 4 strings), correct (integer index 0-3), explanation (string). Jangan ada teks lain selain format JSON valid.`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+                const result = await response.json();
+                const textData = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (textData) {
+                    const parsed = JSON.parse(textData);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        sampleQuestions.length = 0;
+                        sampleQuestions.push(...parsed);
+                        closeCustomQuizModal();
+                        alertCustom(`Berhasil menghasilkan ${parsed.length} soal kuis AI baru! Memulai latihan solo...`);
+                        startSoloMode();
+                    }
+                }
+            } catch (err) {
+                console.log("AI generation error:", err);
+                alertCustom("Gagal menghasilkan soal dari AI. Menggunakan soal default.");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-sparkles"></i><span>Generate Soal</span>`;
+                btn.disabled = false;
+            }
+        };
+
+        // --- CUSTOM ALERT BOX ---
+        function alertCustom(msg) {
+            const div = document.createElement('div');
+            div.className = "fixed bottom-5 right-5 z-50 glass-panel border border-emerald-500/50 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce";
+            div.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i><span class="text-sm font-semibold">${msg}</span>`;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3500);
+        }
+
+        // --- THEME TOGGLE ---
+        window.toggleTheme = function() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            const icon = document.getElementById('themeIcon');
+            if (html.classList.contains('dark')) {
+                icon.className = "fa-solid fa-moon";
+            } else {
+                icon.className = "fa-solid fa-sun";
+            }
+        };
+    </script>
+</body>
+</html>
