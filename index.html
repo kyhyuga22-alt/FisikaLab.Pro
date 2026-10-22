@@ -380,6 +380,391 @@
         </div>
     </div>
 
+<script>
+    // -------------------------------------------------------------
+    // KONFIGURASI SUPABASE (Ganti dengan credentials milikmu)
+    // -------------------------------------------------------------
+    const SUPABASE_URL = 'https://zpuevwdbgsyozowbrcbu.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwdWV2d2RiZ3N5b3pvd2JyY2J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDk4NjYsImV4cCI6MjEwODIyNTg2Nn0.3iKa5ykUY2NTsgL73rLWfZnhx2LCOw7Xj-D7ooXQibU';
+    
+    // Inisialisasi Supabase Client
+    let supabaseClient = null;
+    if (typeof supabase !== 'undefined' && SUPABASE_URL.indexOf('https://zpuevwdbgsyozowbrcbu.supabase.co') === -1) {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+
+    // Sample Physics Questions
+    const sampleQuestions = [
+        {
+            topic: "Mekanika Klasik",
+            question: "Sebuah benda bermassa 2 kg bergerak dengan kecepatan awal 5 m/s pada bidang datar licin. Jika diberi gaya tetap 10 N searah geraknya selama 3 s, berapakah kecepatan akhir benda tersebut?",
+            options: ["15 m/s", "20 m/s", "25 m/s", "30 m/s"],
+            correct: 1
+        },
+        {
+            topic: "Termodinamika",
+            question: "Pada proses isotermal suatu gas ideal, besaran apakah yang bernilai tetap (konstan) sepanjang proses berlangsung?",
+            options: ["Tekanan (P)", "Volume (V)", "Suhu (T)", "Usaha (W)"],
+            correct: 2
+        },
+        {
+            topic: "Gelombang & Optik",
+            question: "Cahaya monokromatik dengan panjang gelombang 500 nm melewati celah ganda Young. Jika jarak celah ke layar 1 m dan jarak terang ke-1 dari pusat 0,5 mm, berapakah jarak antar celah (d)?",
+            options: ["0,5 mm", "1,0 mm", "1,5 mm", "2,0 mm"],
+            correct: 1
+        }
+    ];
+
+    let gameState = {
+        mode: 'solo',
+        roomCode: '',
+        nickname: '',
+        questions: sampleQuestions,
+        currentIndex: 0,
+        score: 0,
+        isAnswered: false,
+        players: []
+    };
+
+    let activeChannel = null;
+    let pollInterval = null;
+
+    // Standard Navigation
+    window.switchView = function(viewName) {
+        if (pollInterval) clearInterval(pollInterval);
+
+        document.getElementById('viewHome').classList.add('hidden');
+        document.getElementById('viewSolo').classList.add('hidden');
+        document.getElementById('viewHostDashboard').classList.add('hidden');
+        document.getElementById('viewLiveGame').classList.add('hidden');
+        document.getElementById('viewPodium').classList.add('hidden');
+
+        if (viewName === 'home') document.getElementById('viewHome').classList.remove('hidden');
+        if (viewName === 'solo') document.getElementById('viewSolo').classList.remove('hidden');
+        if (viewName === 'hostDashboard') document.getElementById('viewHostDashboard').classList.remove('hidden');
+        if (viewName === 'liveGame') document.getElementById('viewLiveGame').classList.remove('hidden');
+        if (viewName === 'podium') document.getElementById('viewPodium').classList.remove('hidden');
+    };
+
+    // --- SOLO MODE ---
+    window.startSoloMode = function() {
+        gameState.mode = 'solo';
+        gameState.currentIndex = 0;
+        gameState.score = 0;
+        switchView('solo');
+        renderSoloQuestion();
+    };
+
+    function renderSoloQuestion() {
+        const q = gameState.questions[gameState.currentIndex];
+        document.getElementById('soloCategoryBadge').innerText = q.topic;
+        document.getElementById('soloCurrQ').innerText = gameState.currentIndex + 1;
+        document.getElementById('soloTotalQ').innerText = gameState.questions.length;
+        document.getElementById('soloQuestionText').innerText = q.question;
+        document.getElementById('soloNextBtn').classList.add('hidden');
+        gameState.isAnswered = false;
+
+        const container = document.getElementById('soloOptionsContainer');
+        container.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = "w-full text-left p-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 font-medium text-white transition flex items-center justify-between";
+            btn.innerHTML = `<span><strong class="text-emerald-400 mr-2">${String.fromCharCode(65 + idx)}.</strong> ${opt}</span>`;
+            btn.onclick = () => selectSoloOption(idx);
+            container.appendChild(btn);
+        });
+    }
+
+    window.selectSoloOption = function(idx) {
+        if (gameState.isAnswered) return;
+        gameState.isAnswered = true;
+        const q = gameState.questions[gameState.currentIndex];
+        const buttons = document.getElementById('soloOptionsContainer').children;
+
+        for (let i = 0; i < buttons.length; i++) {
+            buttons[i].disabled = true;
+            if (i === q.correct) {
+                buttons[i].classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-300');
+            } else if (i === idx && idx !== q.correct) {
+                buttons[i].classList.add('bg-rose-600/30', 'border-rose-500', 'text-rose-300');
+            }
+        }
+
+        if (idx === q.correct) gameState.score += 100;
+        document.getElementById('soloNextBtn').classList.remove('hidden');
+    };
+
+    window.nextSoloQuestion = function() {
+        gameState.currentIndex++;
+        if (gameState.currentIndex < gameState.questions.length) {
+            renderSoloQuestion();
+        } else {
+            showPodium([{ nickname: 'Kamu (Solo)', score: gameState.score }]);
+        }
+    };
+
+    // --- MULTIPLAYER ROOM (HOST) ---
+    window.setupHostRoom = async function() {
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        gameState.roomCode = code;
+        gameState.mode = 'host';
+        gameState.nickname = 'HOST';
+        gameState.players = [];
+
+        document.getElementById('hostRoomCodeDisplay').innerText = code;
+        switchView('hostDashboard');
+
+        if (supabaseClient) {
+            await supabaseClient.from('rooms').delete().eq('code', code);
+            await supabaseClient.from('players').delete().eq('room_code', code);
+
+            await supabaseClient.from('rooms').insert([{ code: code, status: 'waiting', current_index: 0 }]);
+            
+            subscribeToRoom(code);
+        } else {
+            localStorage.setItem(`room_${code}`, JSON.stringify({ code: code, status: 'waiting', players: [] }));
+            alertCustom("Menjalankan dalam mode lokal/offline.");
+        }
+    };
+
+    window.hostStartGame = async function() {
+        if (supabaseClient) {
+            await supabaseClient.from('rooms').update({ status: 'active', current_index: 0 }).eq('code', gameState.roomCode);
+        }
+        startLiveGameSession();
+    };
+
+    // --- MULTIPLAYER ROOM (JOIN PARTICIPANT) ---
+    window.openJoinModal = function() { document.getElementById('joinModal').classList.remove('hidden'); };
+    window.closeJoinModal = function() { document.getElementById('joinModal').classList.add('hidden'); };
+
+    window.submitJoinRoom = async function() {
+        const code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
+        const nickname = document.getElementById('joinNicknameInput').value.trim();
+
+        if (!code || code.length !== 4) {
+            alertCustom("Masukkan 4 digit kode room yang valid.");
+            return;
+        }
+        if (!nickname) {
+            alertCustom("Masukkan nama panggilan / nickname kamu.");
+            return;
+        }
+
+        gameState.roomCode = code;
+        gameState.nickname = nickname;
+        gameState.mode = 'participant';
+        gameState.score = 0;
+
+        closeJoinModal();
+
+        if (supabaseClient) {
+            const { data: room, error } = await supabaseClient
+                .from('rooms')
+                .select('*')
+                .eq('code', code)
+                .single();
+
+            if (error || !room) {
+                alertCustom("Kode Room tidak ditemukan!");
+                return;
+            }
+
+            const { error: insertError } = await supabaseClient
+                .from('players')
+                .insert([{ room_code: code, nickname: nickname, score: 0 }]);
+
+            if (insertError) {
+                console.error("Gagal join:", insertError);
+            }
+
+            subscribeToRoom(code);
+            alertCustom(`Berhasil bergabung ke Room ${code}!`);
+
+            if (room.status === 'active') {
+                switchView('liveGame');
+                startLiveGameSession();
+            } else {
+                switchView('liveGame');
+                document.getElementById('liveRoleBadge').innerText = `Peserta: ${nickname} (Menunggu Host)`;
+                document.getElementById('liveQuestionText').innerText = "Kamu sudah masuk room! Harap tunggu Host memulai permainan.";
+            }
+        } else {
+            let roomData = localStorage.getItem(`room_${code}`) || JSON.stringify({ players: [] });
+            let parsed = JSON.parse(roomData);
+            parsed.players.push({ nickname: nickname, score: 0 });
+            localStorage.setItem(`room_${code}`, JSON.stringify(parsed));
+            
+            alertCustom(`Berhasil bergabung ke Room ${code}!`);
+            switchView('liveGame');
+            startLiveGameSession();
+        }
+    };
+
+    // --- REALTIME SYNC ENGINE ---
+    function subscribeToRoom(code) {
+        if (!supabaseClient) return;
+
+        if (activeChannel) {
+            supabaseClient.removeChannel(activeChannel);
+        }
+
+        activeChannel = supabaseClient
+            .channel(`public:room_${code}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_code=eq.${code}` }, () => {
+                fetchPlayers(code);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${code}` }, payload => {
+                const updatedRoom = payload.new;
+                gameState.currentIndex = updatedRoom.current_index;
+                if (updatedRoom.status === 'active' && gameState.mode === 'participant') {
+                    renderLiveQuestion();
+                } else if (updatedRoom.status === 'finished') {
+                    showPodium(gameState.players);
+                }
+            })
+            .subscribe();
+
+        fetchPlayers(code);
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(() => {
+            fetchPlayers(code);
+        }, 2000);
+    }
+
+    async function fetchPlayers(code) {
+        if (!supabaseClient) return;
+        const { data: players, error } = await supabaseClient
+            .from('players')
+            .select('*')
+            .eq('room_code', code)
+            .order('score', { ascending: false });
+
+        if (!error && players) {
+            gameState.players = players;
+            renderHostPlayersList();
+            renderLiveLeaderboard();
+        }
+    }
+
+    function renderHostPlayersList() {
+        const listEl = document.getElementById('hostPlayersList');
+        if (!listEl) return;
+
+        document.getElementById('hostPlayerCount').innerText = gameState.players.length;
+        if (gameState.players.length === 0) {
+            listEl.innerHTML = `<div class="text-slate-500 italic text-center py-12">Menunggu peserta bergabung...</div>`;
+            return;
+        }
+        listEl.innerHTML = '';
+        gameState.players.forEach(p => {
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700";
+            div.innerHTML = `<span class="font-semibold text-white"><i class="fa-solid fa-user text-emerald-400 mr-2"></i>${p.nickname}</span> <span class="text-xs font-mono text-cyan-400">${p.score} pts</span>`;
+            listEl.appendChild(div);
+        });
+    }
+
+    function renderLiveLeaderboard() {
+        const listEl = document.getElementById('liveLeaderboardList');
+        if (!listEl) return;
+
+        if (gameState.players.length === 0) {
+            listEl.innerHTML = `<div class="text-slate-500 italic text-center py-12">Belum ada peserta...</div>`;
+            return;
+        }
+        listEl.innerHTML = '';
+        gameState.players.forEach((p, idx) => {
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800 text-xs";
+            div.innerHTML = `<span class="font-semibold text-white flex items-center"><span class="w-5 text-slate-400">#${idx+1}</span> ${p.nickname}</span> <span class="font-mono text-cyan-400 font-bold">${p.score} pts</span>`;
+            listEl.appendChild(div);
+        });
+    }
+
+    function startLiveGameSession() {
+        document.getElementById('liveRoleBadge').innerText = gameState.mode === 'host' ? 'Role: Host (Master)' : `Role: ${gameState.nickname}`;
+        renderLiveQuestion();
+    }
+
+    function renderLiveQuestion() {
+        const q = sampleQuestions[gameState.currentIndex];
+        if (!q) {
+            showPodium(gameState.players);
+            return;
+        }
+
+        document.getElementById('liveCurrQ').innerText = gameState.currentIndex + 1;
+        document.getElementById('liveTotalQ').innerText = sampleQuestions.length;
+        document.getElementById('liveCategoryTag').innerText = q.topic;
+        document.getElementById('liveQuestionText').innerText = q.question;
+        document.getElementById('liveUserScore').innerText = `${gameState.score} pts`;
+
+        const optContainer = document.getElementById('liveOptionsContainer');
+        optContainer.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = "w-full text-left p-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 font-medium text-white transition flex items-center justify-between";
+            btn.innerHTML = `<span><strong class="text-cyan-400 mr-2">${String.fromCharCode(65 + idx)}.</strong> ${opt}</span>`;
+            btn.onclick = () => selectLiveOption(idx);
+            optContainer.appendChild(btn);
+        });
+    }
+
+    window.selectLiveOption = async function(idx) {
+        const q = sampleQuestions[gameState.currentIndex];
+        if (idx === q.correct) {
+            gameState.score += 100;
+            document.getElementById('liveUserScore').innerText = `${gameState.score} pts`;
+
+            if (supabaseClient && gameState.mode === 'participant') {
+                await supabaseClient
+                    .from('players')
+                    .update({ score: gameState.score })
+                    .eq('room_code', gameState.roomCode)
+                    .eq('nickname', gameState.nickname);
+            }
+        }
+        alertCustom(idx === q.correct ? "Jawaban Benar! +100 Pts" : "Jawaban Kurang Tepat");
+    };
+
+    function showPodium(playersList) {
+        switchView('podium');
+        const topListEl = document.getElementById('podiumTopList');
+        const sorted = [...playersList].sort((a, b) => b.score - a.score);
+        topListEl.innerHTML = `
+            <div class="col-span-3 bg-amber-500/10 border border-amber-500/40 p-6 rounded-2xl text-center">
+                <i class="fa-solid fa-crown text-amber-400 text-3xl mb-2"></i>
+                <div class="font-bold text-lg text-white">${sorted[0]?.nickname || 'Juara'}</div>
+                <div class="text-amber-400 font-mono font-bold">${sorted[0]?.score || 0} pts</div>
+            </div>`;
+    }
+
+    function alertCustom(msg) {
+        const div = document.createElement('div');
+        div.className = "fixed bottom-5 right-5 z-50 glass-panel border border-emerald-500/50 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3";
+        div.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i><span class="text-sm font-semibold">${msg}</span>`;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
+    }
+
+    window.copyRoomCode = function() {
+        navigator.clipboard.writeText(gameState.roomCode);
+        alertCustom("Kode room berhasil disalin!");
+    };
+
+    window.openCustomQuizModal = function() { document.getElementById('customQuizModal').classList.remove('hidden'); };
+    window.closeCustomQuizModal = function() { document.getElementById('customQuizModal').classList.add('hidden'); };
+    window.generateCustomAIQuiz = function() {
+        alertCustom("Menghasilkan soal kuis kustom...");
+        closeCustomQuizModal();
+        startSoloMode();
+    };
+    window.toggleTheme = function() {
+        document.documentElement.classList.toggle('dark');
+    };
+</script>
+    
     <!-- Application Script (Multiplayer Room Sync) -->
     <script>
         // Sample Physics Questions
